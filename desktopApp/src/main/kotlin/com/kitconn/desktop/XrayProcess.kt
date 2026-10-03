@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit
 
 /** Запускает xray как дочерний процесс и опрашивает его статистику. */
 class XrayProcess(private val binary: File, private val apiPort: Int) {
+    val binaryPath: String get() = binary.absolutePath
+
     private var process: Process? = null
     private val lock = Any()
     private val pidFile = File(AppPaths.dataDir, "xray.pid")
@@ -45,6 +47,7 @@ class XrayProcess(private val binary: File, private val apiPort: Int) {
         val tail = StringBuilder()
         Thread {
             p.inputStream.bufferedReader().forEachLine { line ->
+                Log.d("xray: $line")
                 synchronized(tail) { tail.append(line).append('\n'); if (tail.length > 600) tail.delete(0, tail.length - 600) }
             }
         }.apply { isDaemon = true }.start()

@@ -58,6 +58,7 @@ class WindowsSystemProxy : SystemProxy {
         set("ProxyServer", "REG_SZ", "http=127.0.0.1:$httpPort;https=127.0.0.1:$httpPort;socks=127.0.0.1:$socksPort")
         set("ProxyOverride", "REG_SZ", "localhost;127.*;10.*;172.16.*;192.168.*;<local>")
         set("ProxyEnable", "REG_DWORD", "1")
+        Log.d("реестр: ProxyEnable=${query("ProxyEnable")} ProxyServer=${query("ProxyServer")}")
         notifySettingsChanged()
     }
 
@@ -81,15 +82,24 @@ class WindowsSystemProxy : SystemProxy {
     private fun isOurs(httpPort: Int): Boolean =
         query("ProxyEnable")?.endsWith("1") == true && query("ProxyServer")?.contains("127.0.0.1:$httpPort") == true
 
-    /** Без этого браузеры и системные службы замечают смену прокси не сразу. */
+    /**
+     * Без этого браузеры и системные службы замечают смену прокси не сразу.
+     * Скрипт передаётся через -EncodedCommand (UTF-16LE в Base64): при обычной передаче в командной строке Windows
+     * двойные кавычки внутри аргумента теряются, и `[DllImport("wininet.dll")]` не компилируется.
+     */
     private fun notifySettingsChanged() {
         val script = """
             ${'$'}sig = '[DllImport("wininet.dll")] public static extern bool InternetSetOption(IntPtr h, int o, IntPtr b, int l);'
             ${'$'}t = Add-Type -MemberDefinition ${'$'}sig -Name W -Namespace N -PassThru
-            ${'$'}t::InternetSetOption([IntPtr]::Zero, 39, [IntPtr]::Zero, 0) | Out-Null
-            ${'$'}t::InternetSetOption([IntPtr]::Zero, 37, [IntPtr]::Zero, 0) | Out-Null
+            ${'$'}null = ${'$'}t::InternetSetOption([IntPtr]::Zero, 39, [IntPtr]::Zero, 0)
+            ${'$'}null = ${'$'}t::InternetSetOption([IntPtr]::Zero, 37, [IntPtr]::Zero, 0)
         """.trimIndent()
-        runCatching { exec("powershell", "-NoProfile", "-NonInteractive", "-Command", script, timeoutSec = 15) }
+        val encoded = java.util.Base64.getEncoder().encodeToString(script.toByteArray(Charsets.UTF_16LE))
+        runCatching {
+            exec("powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded, timeoutSec = 20)
+        }
+            .onSuccess { Log.d("WinINet уведомлён об изменении прокси") }
+            .onFailure { Log.d("не удалось уведомить WinINet: ${it.message?.take(300)}") }
     }
 }
 

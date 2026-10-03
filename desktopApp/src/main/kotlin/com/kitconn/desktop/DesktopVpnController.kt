@@ -40,6 +40,7 @@ class DesktopVpnController(
     init {
         xray.onUnexpectedExit = {
             if (_state.value != VpnState.DISCONNECTED) {
+                Log.d("xray завершился сам")
                 _errors.tryEmit("Соединение прервано: ядро Xray остановилось")
                 disconnect()
             }
@@ -49,16 +50,20 @@ class DesktopVpnController(
     override suspend fun connect(config: VpnConfig) {
         if (_state.value != VpnState.DISCONNECTED) return
         _state.value = VpnState.CONNECTING
+        Log.d("connect: ${config.displayName} (${config.subtitle}), os=${System.getProperty("os.name")}, xray=${xray.binaryPath}")
         try {
             val json = XrayConfigBuilder.build(VlessParser.parse(config.config), ports)
             xray.start(json, ports.socksPort)
+            Log.d("xray запущен, SOCKS ${ports.socksPort}, HTTP ${ports.httpPort}")
             // Если за время запуска нажали «Отключить», состояние уже сброшено
             if (_state.value != VpnState.CONNECTING) { xray.stop(); return }
             withContext(Dispatchers.IO) { proxy.enable(ports.httpPort, ports.socksPort) }
+            Log.d("системный прокси включён")
             if (_state.value != VpnState.CONNECTING) { cleanup(); return }
             _state.value = VpnState.CONNECTED
             startStats()
         } catch (e: Exception) {
+            Log.d("ОШИБКА connect: ${e.message}")
             cleanup()
             _state.value = VpnState.DISCONNECTED
             _errors.tryEmit(e.message ?: e::class.simpleName ?: "Ошибка подключения")
@@ -66,6 +71,7 @@ class DesktopVpnController(
     }
 
     override fun disconnect() {
+        Log.d("disconnect")
         statsJob?.cancel()
         statsJob = null
         _state.value = VpnState.DISCONNECTED
