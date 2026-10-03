@@ -1,62 +1,80 @@
-# KitConn VPN — Kotlin Multiplatform
+<p align="center">
+  <img src="docs/images/banner.png" alt="KitConn VPN" width="100%">
+</p>
 
-Общий код для Android и iOS: логика, ViewModel и весь интерфейс (Compose Multiplatform).
-Платформенными остаются только VPN-движок и точка входа.
+<p align="center">
+  <img alt="version" src="https://img.shields.io/badge/version-4.0.0-00E5FF?style=for-the-badge&labelColor=0C0D14">
+  <img alt="Kotlin Multiplatform" src="https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white&labelColor=0C0D14">
+  <img alt="Compose Multiplatform" src="https://img.shields.io/badge/Compose-Multiplatform-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white&labelColor=0C0D14">
+</p>
+
+<p align="center">
+  <img alt="Android" src="https://img.shields.io/badge/Android-3DDC84?style=flat-square&logo=android&logoColor=white">
+  <img alt="iOS" src="https://img.shields.io/badge/iOS-000000?style=flat-square&logo=apple&logoColor=white">
+  <img alt="macOS" src="https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white">
+  <img alt="Windows" src="https://img.shields.io/badge/Windows-0078D4?style=flat-square&logo=windows&logoColor=white">
+</p>
+
+## О проекте
+
+**KitConn VPN** — клиент для подключения к серверам по протоколу VLESS (Xray-core). Интерфейс и вся логика написаны один раз
+на Kotlin Multiplatform и Compose Multiplatform, поэтому приложение выглядит и работает одинаково на Android, iOS, macOS и Windows.
+
+<p align="center">
+  <img src="docs/images/screens.png" alt="Скриншоты KitConn VPN" width="100%">
+</p>
+
+## Возможности
+
+- 🎛 **Ручка Off / On** с анимацией: нажимается и поворачивается
+- ⏱ Таймер подключения, скорость загрузки и отдачи в реальном времени
+- 🌍 Список серверов в виде стеклянных карточек, круглые флаги стран и замер пинга
+- 💾 Выбранный сервер запоминается
+- 🔗 Поддержка конфигураций VLESS: TCP, Reality, TLS, XHTTP
+- 🐱 Минималистичный дизайн и сплэш с подмигивающим котом
+
+## Платформы
+
+| Платформа | Как работает VPN | Состояние |
+|---|---|---|
+| **Android** | `VpnService` + Xray, весь трафик устройства | собирается, уведомление с таймером; проверка на устройстве впереди |
+| **macOS** | Xray + системный прокси, приложение в строке меню | работает |
+| **Windows** | Xray + системный прокси (реестр), иконка в трее | собрано, ожидает проверки на Windows |
+| **iOS** | управляет VLESS-клиентом через «Быстрые команды»; собственный туннель требует Network Extension | интерфейс работает, туннель — в разработке |
+
+> На iOS собственный VPN-туннель возможен только с платной программой Apple Developer (Network Extension).
+> Пока приложение передаёт сервер в установленный VLESS-клиент и включает его быстрой командой — см. [`iosApp/SHORTCUTS.md`](iosApp/SHORTCUTS.md).
+
+## Скачать
+
+Готовые сборки — в разделе [Releases](../../releases) (если релиз ещё не опубликован, собрать можно самостоятельно, см. ниже).
+
+- **Windows** — портативный архив `KitConn-4.0.0-windows-portable.zip`: распаковать и запустить `KitConn.vbs`.
+- **macOS** — образ `KitConn-4.0.0.dmg`: перетащить в «Программы», при первом запуске «Открыть» правой кнопкой.
+- **Android** — пока собирается из исходников (`./gradlew :androidApp:assembleDebug`).
+
+## Структура проекта
 
 ```
-shared/       KMP-модуль (commonMain + androidMain + iosMain + jvm для тестов)
-  core/         VlessParser, XrayConfigBuilder, TcpPing, CountryCode
-  data/         ConfigsApi (Ktor), KeyValueStore
-  vpn/          VpnController — интерфейс, который реализует каждая платформа
-  presentation/ MainViewModel, MainUiState, MainAction
-  ui/           KitConnApp, MainScreen, ручка Off/On, карточки серверов, флаги, сплэш
-androidApp/   MainActivity, VpnService + Xray (libv2ray.aar), уведомление
-iosApp/       SwiftUI-хост + Xcode-проект (генерируется generate_project.rb)
+shared/       Kotlin Multiplatform: логика, ViewModel и весь интерфейс (Compose Multiplatform)
+androidApp/   Android: VpnService + Xray, уведомление
+iosApp/       iOS: SwiftUI-хост и Xcode-проект
+desktopApp/   Windows и macOS (JVM): Xray + системный прокси, трей
 ```
 
-## Секреты
-Токен API в git не попадает:
-- Android: `androidApp/src/main/kotlin/com/kitconn/android/Secrets.kt` (`object Secrets { const val API_TOKEN }`)
-- iOS: `iosApp/iosApp/Secrets.swift` (шаблон — `iosApp/Secrets.example.swift`)
+Подробности по сборке, тестам и устройству каждого модуля — в [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-## Команды
+## Быстрый старт для разработчика
+
 ```bash
-./gradlew :shared:jvmTest                    # тесты общей логики (быстро, без эмулятора)
-./gradlew :androidApp:assembleDebug          # Android
-./gradlew :shared:linkDebugFrameworkIosSimulatorArm64   # iOS-фреймворк
-
-# iOS: проект уже сгенерирован; пересоздать (после изменения списка файлов):
-cd iosApp
-GEM_HOME=$(ls -d /opt/homebrew/Cellar/cocoapods/*/libexec | head -1) \
-  /opt/homebrew/opt/ruby/bin/ruby generate_project.rb            # без туннеля (бесплатный Apple ID); --tunnel — с PacketTunnel
-xcodebuild -project KitConnIOS.xcodeproj -scheme KitConnIOS -sdk iphonesimulator \
-  -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+./gradlew :shared:jvmTest              # тесты общей логики
+./gradlew :androidApp:assembleDebug    # Android
+./gradlew :desktopApp:run              # Windows / macOS
 ```
-Или откройте `iosApp/KitConnIOS.xcodeproj` в Xcode. Фаза сборки сама вызывает Gradle.
 
-## Что готово / чего нет
-- Готово: общий UI и логика, Android (VPN-сервис, уведомление), iOS-приложение запускается в симуляторе
-  с реальным списком серверов.
-- Не сделано, Android: виджет на рабочий стол, release-подпись.
-- Не сделано, iOS: **сам VPN-туннель**. Нужен `NEPacketTunnelProvider` (Network Extension) с Xray
-  (gomobile-сборка LibXray как xcframework) — это требует платной программы Apple Developer
-  (entitlement `packet-tunnel-provider`) и реального устройства (в симуляторе туннели не работают).
-  Точка подключения: `TunnelBridge` в `shared/src/iosMain` — его реализует Swift-код.
-- `allowInsecure` из ссылок игнорируется: сервер конфигов не может отключать проверку TLS.
-- applicationId Android — `com.kitconnvpn.kmp`, чтобы ставилось рядом со старым приложением.
+Токен API в репозиторий не коммитится: шаблон — `iosApp/Secrets.example.swift`, для Android и десктопа файл `Secrets.kt` создаётся локально.
 
-## Windows (desktopApp)
-Compose Desktop (JVM) поверх общего модуля: тот же интерфейс, трей, один экземпляр. Подключение: Xray как локальный прокси
-(`127.0.0.1:10808` SOCKS, `10809` HTTP) + системный прокси в реестре текущего пользователя (права администратора не нужны).
-Прежние настройки прокси запоминаются и возвращаются при отключении; при аварийном завершении следующий запуск их чистит.
+## Благодарности
 
-```bash
-./gradlew :desktopApp:run                              # запуск (на macOS тоже работает: прокси через networksetup)
-KITCONN_SELFTEST=1 ./gradlew :desktopApp:run           # проверка без окна: серверы → подключение → внешний IP → отключение
-desktopApp/scripts/fetch-xray.sh windows               # скачать xray.exe (SHA-256 проверяется)
-./gradlew :desktopApp:packageMsi                       # установщик; собирается ТОЛЬКО на Windows
-```
-Установщик собирает GitHub Actions (`.github/workflows/windows.yml`): нужен секрет репозитория `KITCONN_API_TOKEN`.
-Токен для локальной сборки — `desktopApp/src/main/kotlin/com/kitconn/desktop/Secrets.kt` (в `.gitignore`).
-
-Проверено на macOS: подключение, трафик, статистика, отключение, очистка. **Реестр Windows, трей и MSI на Windows не проверялись.**
+- [Xray-core](https://github.com/XTLS/Xray-core) — ядро для VLESS и Reality
+- [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) и [Compose Multiplatform](https://www.jetbrains.com/compose-multiplatform/)

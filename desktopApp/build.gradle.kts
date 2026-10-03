@@ -47,3 +47,25 @@ compose.desktop {
         }
     }
 }
+
+// ───────── Портативная сборка для Windows (собирается и на macOS) ─────────
+// Compose кладёт в classpath нативную библиотеку Skia только для текущей ОС. Для Windows-архива заменяем её на windows-x64.
+tasks.register<Sync>("stageWindowsLib") {
+    group = "distribution"
+    description = "Собирает lib/ для Windows: JAR приложения и зависимостей + Skia для windows-x64"
+    dependsOn(tasks.named("jar"))
+    into(layout.buildDirectory.dir("portable/KitConn/lib"))
+    from(tasks.named("jar"))
+
+    val artifacts = configurations.runtimeClasspath.get().resolvedConfiguration.resolvedArtifacts
+    // Одинаковые имена файлов бывают у разных групп (androidx и org.jetbrains.androidx): добавляем группу к имени
+    artifacts.filter { !it.name.startsWith("skiko-awt-runtime-") }.forEach { a ->
+        from(a.file) { rename { "${a.moduleVersion.id.group}-$it" } }
+    }
+    val skikoVersion = artifacts.first { it.name.startsWith("skiko-awt-runtime-") }.moduleVersion.id.version
+    from(
+        configurations.detachedConfiguration(
+            dependencies.create("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:$skikoVersion"),
+        ).apply { isTransitive = false },
+    )
+}
