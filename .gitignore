@@ -1,0 +1,19 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+.kotlin/
+# Токен API: шаблон — shared/Secrets.example.txt
+androidApp/src/main/kotlin/com/kitconn/android/Secrets.kt
+iosApp/iosApp/Secrets.swift
+iosApp/KitConnIOS.xcodeproj/xcuserdata/
+iosApp/Local.xcconfig
+iosApp/build-device/
+iosApp/build/
+# Ядро Xray не коммитим: его скачивает desktopApp/scripts/fetch-xray.sh (с проверкой SHA-256)
+desktopApp/appResources/*/xray
+desktopApp/appResources/*/xray.exe
+desktopApp/src/main/kotlin/com/kitconn/desktop/Secrets.kt
+promo/

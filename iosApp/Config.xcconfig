@@ -1,0 +1,2 @@
+// Общие настройки подписи. Личные значения (команда) лежат в Local.xcconfig — он в .gitignore.
+#include? "Local.xcconfig"
